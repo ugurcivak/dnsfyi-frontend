@@ -1252,8 +1252,8 @@ let lastResult = null;
 let lastEmailResult = null;
 let visitedTabs = {};
 
-const TAB_PATHS = { hizli: "hizli", web: "web", whois: "whois", "email-health": "email-health", fazlasi: "fazlasi", "port-scan": "port", "email-header": "email-header-v2", "email-header-v2": "email-header-v2", "reverse-ip": "reverse-ip" };
-const PATH_TABS = { hizli: "hizli", web: "web", whois: "whois", "email-health": "email-health", fazlasi: "fazlasi", port: "port-scan", "email-header": "email-header-v2", "email-header-v2": "email-header-v2", "reverse-ip": "reverse-ip" };
+const TAB_PATHS = { hizli: "quick", web: "web", whois: "whois", "email-health": "email-health", fazlasi: "more", "port-scan": "port", "email-header": "email-header-v2", "email-header-v2": "email-header-v2", "reverse-ip": "reverse-ip" };
+const PATH_TABS = { quick: "hizli", web: "web", whois: "whois", "email-health": "email-health", more: "fazlasi", port: "port-scan", "email-header": "email-header-v2", "email-header-v2": "email-header-v2", "reverse-ip": "reverse-ip" };
 
 function switchTab(tab, skipHistory) {
   activeTab = tab;
