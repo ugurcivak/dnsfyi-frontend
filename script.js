@@ -442,6 +442,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Email header analyze
   const emailBtn = document.getElementById("btn-analyze-email");
   if (emailBtn) emailBtn.addEventListener("click", analyzeEmailHeaders);
+  // Email header v2 analyze
+  const emailBtnV2 = document.getElementById("btn-analyze-email-v2");
+  if (emailBtnV2) emailBtnV2.addEventListener("click", analyzeEmailHeadersV2);
   // Domain input placeholder behavior
   const di = document.getElementById("domain-input");
   if (di) {
@@ -456,7 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Click delegation for data-* attributes
 document.addEventListener("click", (e) => {
-  const target = e.target.closest("[data-action],[data-tab],[data-module],[data-tool],[data-domain],[data-example],[data-export],[data-copy],#port-scan-btn-custom,#port-scan-btn-reset");
+  const target = e.target.closest("[data-action],[data-tab],[data-module],[data-tool],[data-domain],[data-example],[data-example-v2],[data-export],[data-copy],#port-scan-btn-custom,#port-scan-btn-reset");
   if (!target) return;
 
   const action = target.dataset.action;
@@ -578,6 +581,9 @@ document.addEventListener("click", (e) => {
 
   const example = target.dataset.example;
   if (example) { loadExampleHeader(example); return; }
+
+  const exampleV2 = target.dataset.exampleV2;
+  if (exampleV2) { loadExampleHeaderV2(exampleV2); return; }
 
   const exportFmt = target.dataset.export;
   if (exportFmt) { exportFormat(exportFmt); return; }
@@ -1246,8 +1252,8 @@ let lastResult = null;
 let lastEmailResult = null;
 let visitedTabs = {};
 
-const TAB_PATHS = { hizli: "hizli", web: "web", whois: "whois", "email-health": "email-health", fazlasi: "fazlasi", "port-scan": "port", "email-header": "email-header", "reverse-ip": "reverse-ip" };
-const PATH_TABS = { hizli: "hizli", web: "web", whois: "whois", "email-health": "email-health", fazlasi: "fazlasi", port: "port-scan", "email-header": "email-header", "reverse-ip": "reverse-ip" };
+const TAB_PATHS = { hizli: "hizli", web: "web", whois: "whois", "email-health": "email-health", fazlasi: "fazlasi", "port-scan": "port", "email-header": "email-header-v2", "email-header-v2": "email-header-v2", "reverse-ip": "reverse-ip" };
+const PATH_TABS = { hizli: "hizli", web: "web", whois: "whois", "email-health": "email-health", fazlasi: "fazlasi", port: "port-scan", "email-header": "email-header-v2", "email-header-v2": "email-header-v2", "reverse-ip": "reverse-ip" };
 
 function switchTab(tab, skipHistory) {
   activeTab = tab;
@@ -1260,7 +1266,7 @@ function switchTab(tab, skipHistory) {
   }
 
   // Auto-analyze module on first visit (for standalone tool panels)
-  if (tab !== "hizli" && tab !== "email-header" && tab !== "fazlasi" && !visitedTabs[tab]) {
+  if (tab !== "hizli" && tab !== "email-header" && tab !== "email-header-v2" && tab !== "fazlasi" && !visitedTabs[tab]) {
     visitedTabs[tab] = true;
     // Auto-populate from lastResult if available
     if (tab === "port-scan" && lastResult?.ports) {
@@ -2069,8 +2075,44 @@ async function fetchVisitorIP() {
     if (data.city) parts.push(data.city);
     if (data.country) parts.push(data.country);
     document.getElementById("visitorIp").innerHTML = `<span class="ip-dot"></span> ${parts.join(" · ")}`;
+    showLangSuggestion(data.country);
   } catch {
     document.getElementById("visitorIp").innerHTML = `<span class="ip-dot"></span> ${document.documentElement.lang === "en" ? "Unavailable" : _t("Bağlanılamadı","Unavailable")}`;
+  }
+}
+
+function showLangSuggestion(country) {
+  if (!country) return;
+  const existing = document.getElementById("lang-suggestion");
+  if (existing) existing.remove();
+  
+  const isTR = document.documentElement.lang === "tr";
+  const isTurkey = country === "Turkey" || country === "Türkiye";
+  
+  // Show suggestion: IP is Turkish but page is English, or IP is foreign but page is Turkish
+  if ((isTurkey && !isTR) || (!isTurkey && isTR)) {
+    const pill = document.createElement("div");
+    pill.id = "lang-suggestion";
+    pill.className = "lang-suggestion";
+    
+    if (isTurkey && !isTR) {
+      pill.innerHTML = `<span>🇹🇷</span><span>${_t("Türkçe'ye Geç","Switch to Turkish")}</span><span class="lang-suggestion-close">&times;</span>`;
+      pill.addEventListener("click", (e) => {
+        if (e.target.classList.contains("lang-suggestion-close")) { pill.remove(); return; }
+        document.cookie = "lang=tr;path=/;max-age=31536000";
+        location.href = "/tr/";
+      });
+    } else {
+      pill.innerHTML = `<span>🇬🇧</span><span>${_t("İngilizce'ye Geç","Switch to English")}</span><span class="lang-suggestion-close">&times;</span>`;
+      pill.addEventListener("click", (e) => {
+        if (e.target.classList.contains("lang-suggestion-close")) { pill.remove(); return; }
+        document.cookie = "lang=en;path=/;max-age=31536000";
+        location.href = "/";
+      });
+    }
+    
+    document.body.appendChild(pill);
+    setTimeout(() => { if (pill.parentNode) pill.style.opacity = "0"; setTimeout(() => pill.remove(), 500); }, 8000);
   }
 }
 
@@ -2088,9 +2130,9 @@ function updateRateLimit(remaining) {
 // ── Language Toggle ──
 function toggleLang() {
   const currentLang = document.documentElement.lang;
-  document.cookie = "lang=" + (currentLang === "tr" ? "en" : "tr") + ";path=/;max-age=31536000;SameSite=Lax";
-  const path = window.location.pathname.replace(/\/(index(-en)?\.html)?$/, '/') || '/';
-  window.location.href = path + window.location.search + window.location.hash;
+  const targetLang = currentLang === "tr" ? "en" : "tr";
+  document.cookie = "lang=" + targetLang + ";path=/;max-age=31536000;SameSite=Lax";
+  window.location.href = targetLang === "tr" ? "/tr/" : "/";
 }
 
 function applyTheme() {
@@ -2145,7 +2187,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("domain-input").addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       if (activeTab === "hizli") analyze();
-      else if (activeTab === "email-header") analyzeEmailHeaders();
+      else if (activeTab === "email-header" || activeTab === "email-header-v2") analyzeEmailHeadersV2();
       else analyzeModule(activeTab);
     }
   });
@@ -2161,3 +2203,712 @@ document.addEventListener("click", (e) => {
   const target = e.target.closest("#scrollTopBtn");
   if (target) window.scrollTo({ top: 0, behavior: "smooth" });
 });
+
+// ── Email Header Analysis v2 ──
+let lastEmailResultV2 = null;
+
+async function analyzeEmailHeadersV2() {
+  const input = document.getElementById("email-headers-input-v2");
+  const resultsEl = document.getElementById("results-email-header-v2");
+  if (!input || !resultsEl) return;
+
+  const raw = input.value.trim();
+  if (!raw) { showToast(_t("Email header yapıştırın","Paste email headers"), true); return; }
+
+  const btn = document.querySelector("#panel-email-header-v2 .btn-analyze");
+  if (btn) btn.disabled = true;
+
+  resultsEl.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div><div style="color:var(--text-muted);margin-top:8px">' + _t("Analiz ediliyor...","Analyzing...") + '</div></div>';
+
+  fetch("/api/email-analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ headers: raw }),
+  })
+    .then(r => {
+      if (!r.ok) return r.json().then(j => { throw new Error(j.error || _t("Header analizi başarısız","Header analysis failed")); });
+      return r.json();
+    })
+    .then(data => {
+      resultsEl.innerHTML = renderEmailHeaderV2(data);
+      resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (btn) btn.disabled = false;
+    })
+    .catch(err => {
+      resultsEl.innerHTML = `<div class="error-msg">${esc(err.message)}</div>`;
+      if (btn) btn.disabled = false;
+    });
+}
+
+function loadExampleHeaderV2(type) {
+  const samples = {
+    legit: `Return-Path: <newsletter@mail.paypal.com>
+Received: from mx.example.com (198.51.100.1) by pop.example.com (8.15.2/8.15.2) with ESMTPS id A1B2C3D4E5F6 for <user@example.com>; Tue, 02 Jul 2026 14:32:18 +0300 (EEST)
+Received: from mail.paypal.com (192.0.2.10) by mx.example.com (8.15.2/8.15.2) with ESMTPS id A1B2C3D4E5F6 for <user@example.com>; Tue, 02 Jul 2026 14:32:15 +0300 (EEST)
+Received: from mail.paypal.com (192.0.2.10) by mail.paypal.com (8.15.2/8.15.2) with ESMTPS id A1B2C3D4E5F6; Tue, 02 Jul 2026 14:32:10 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; d=paypal.com; s=pp-dkim-1; c=relaxed/simple; q=dns/txt; i=@paypal.com; t=1719915130; bh=abc123def456;
+Authentication-Results: mx.example.com; spf=pass smtp.mailfrom=paypal.com; dkim=pass header.i=@paypal.com; dmarc=pass header.from=paypal.com
+Received-SPF: pass (paypal.com: 192.0.2.10 is authorized)
+From: "PayPal" <service@paypal.com>
+To: "John Doe" <user@example.com>
+Subject: Your payment of $49.99 has been sent
+Date: Tue, 02 Jul 2026 14:32:10 +0300
+Message-ID: <20260702143210.A1B2C3D4E5F6@paypal.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"`,
+    spam: `Return-Path: <bounce@mail.phishy-site.com>
+Received: from mail.phishy-site.com (203.0.113.99) by mx.example.com (8.15.2/8.15.2) with ESMTPS id X9Y8Z7W6V5U4; Tue, 02 Jul 2026 09:15:42 +0300 (EEST)
+Received: from localhost (203.0.113.99) by mail.phishy-site.com (8.15.2/8.15.2) with ESMTP id X9Y8Z7W6V5U4; Tue, 02 Jul 2026 09:15:40 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; d=phishy-site.com; s=dkim-2026; c=relaxed/simple; q=dns/txt; i=@phishy-site.com; t=1719908140;
+Authentication-Results: mx.example.com; spf=fail smtp.mailfrom=phishy-site.com; dkim=fail header.i=@phishy-site.com; dmarc=fail header.from=phishy-site.com
+Received-SPF: fail (phishy-site.com: 203.0.113.99 is not authorized)
+From: "PayPal Security" <security@paypa1.com>
+Reply-To: "Phish" <verify@phishy-site.com>
+To: "Victim" <user@example.com>
+Subject: Your account has been limited - Verify now
+Date: Tue, 02 Jul 2026 09:15:40 +0300
+X-Priority: 1 (High)
+X-Mailer: PHP/7.4.33
+    Message-ID: <20260702091540.99999@mail.phishy-site.com>
+X-Originating-IP: [203.0.113.99]
+X-Spam-Score: 7.8
+X-Spam-Status: Yes, score=7.8 required=5.0 tests=DKIM_SIGNED,HTML_MESSAGE,SPF_FAIL
+Content-Type: multipart/mixed; boundary="----=_Part_12345"
+Content-Disposition: attachment; filename="verify_account.exe"`,
+  };
+  const el = document.getElementById("email-headers-input-v2");
+  if (el) {
+    el.value = samples[type] || samples.legit;
+    analyzeEmailHeadersV2();
+  }
+}
+
+function renderEmailHeaderV2(data) {
+  if (data.error) return `<div class="error-msg">${esc(data.error)}</div>`;
+  lastEmailResultV2 = data;
+
+  const score = calcEmailSecurityScore(data);
+  const safetyLevel = score >= 80 ? "safe" : score >= 50 ? "caution" : "danger";
+
+  let html = '<div style="padding:16px;display:flex;flex-direction:column;gap:16px">';
+
+  // 1. Meta (Temel Bilgiler) - en üstte
+  html += renderMetaCardV2(data.meta, data.emailClient, data.priority, data.importance);
+
+  // 2. Calendar Invite rozeti
+  if (data.isCalendarInvite) html += renderCalendarBadgeV2(data.calendarMethod);
+
+  // 3. Newsletter rozeti
+  if (data.listUnsubscribe) html += renderNewsletterBadgeV2();
+
+  // 4. Security Score Ring
+  html += renderSecurityScoreV2(score, safetyLevel, data);
+
+  // 5. Safety Summary Banner
+  html += renderSafetySummaryV2(data, safetyLevel, score);
+
+  // 6. Spam Score
+  if (data.spamScore !== null || data.spamStatus) html += renderSpamScoreV2(data.spamScore, data.spamStatus);
+
+  // 7. Auth Cards (SPF/DKIM/DMARC) - enlarged
+  if (data.auth) html += renderAuthV2(data.auth);
+
+  // 8. Alerts
+  if (data.alerts?.length > 0) html += renderAlertsV2(data.alerts);
+
+  // 9. Attachments
+  if (data.attachments?.length > 0 || data.contentType?.includes("multipart")) html += renderAttachmentsV2(data.attachments, data.contentType);
+
+  // 10. Timeline (vertical)
+  if (data.received?.length > 0) html += renderTimelineV2(data.received, data.ipInfo, data.ipReputation);
+
+  // 11. ARC
+  if (data.arc?.chains?.length > 0) html += renderARCCard(data.arc);
+
+  // 12. IP Info
+  if (data.ipInfo?.length > 0) html += renderIPCardV2(data.ipInfo);
+
+  // 13. Extra Headers
+  if (data.extraHeaders && Object.keys(data.extraHeaders).length > 0) html += renderExtraCard(data.extraHeaders);
+
+  // 14. Raw
+  if (data.raw) html += renderRawCard(data.raw);
+
+  // 15. Share
+  html += `<div style="display:flex;justify-content:flex-end;margin-top:8px">
+    <button class="btn-analyze" data-action="share-email-v2" style="padding:6px 14px;font-size:0.78rem;flex-shrink:0">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      ${_t("Paylaş","Share")}
+    </button>
+  </div>`;
+
+  html += "</div>";
+  return html;
+}
+
+function calcEmailSecurityScore(data) {
+  let score = 0;
+  const auth = data.auth;
+  if (auth?.spf?.status === "pass") score += 25;
+  if (auth?.dkim?.status === "pass") score += 25;
+  if (auth?.dmarc?.status === "pass") score += 20;
+  if (auth?.dmarc?.policy === "reject") score += 10;
+  else if (auth?.dmarc?.policy === "quarantine") score += 5;
+
+  const highAlerts = (data.alerts || []).filter(a => a.severity === "high").length;
+  const medAlerts = (data.alerts || []).filter(a => a.severity === "medium").length;
+  if (highAlerts === 0 && medAlerts === 0) score += 20;
+  else if (highAlerts === 0) score += 10;
+  else score = Math.max(0, score - highAlerts * 15);
+
+  return Math.min(100, Math.max(0, score));
+}
+
+function renderSecurityScoreV2(score, level, data) {
+  const colors = { safe: "var(--green)", caution: "var(--yellow)", danger: "var(--red)" };
+  const bgs = { safe: "var(--green-bg)", caution: "var(--yellow-bg)", danger: "var(--red-bg)" };
+  const labels = { safe: _t("Güvenli","Safe"), caution: _t("Dikkatli","Caution"), danger: _t("Tehlikeli","Dangerous") };
+  const color = colors[level];
+  const bg = bgs[level];
+  const label = labels[level];
+
+  const circumference = 2 * Math.PI * 36;
+  const dashoffset = circumference - (score / 100) * circumference;
+
+  const auth = data.auth;
+  const checks = [];
+  checks.push({ name: "SPF", ok: auth?.spf?.status === "pass", status: auth?.spf?.status || "none" });
+  checks.push({ name: "DKIM", ok: auth?.dkim?.status === "pass", status: auth?.dkim?.status || "none" });
+  checks.push({ name: "DMARC", ok: auth?.dmarc?.status === "pass", status: auth?.dmarc?.status || "none" });
+  const highAlerts = (data.alerts || []).filter(a => a.severity === "high").length;
+  checks.push({ name: _t("Uyarı Yok","No Alerts"), ok: highAlerts === 0, status: highAlerts > 0 ? highAlerts + " " + _t("yüksek","high") : "0" });
+
+  const passed = checks.filter(c => c.ok).length;
+
+  let checksHtml = "";
+  for (const c of checks) {
+    checksHtml += `<div class="eh-v2-check ${c.ok ? 'eh-v2-check-ok' : 'eh-v2-check-fail'}">
+      <span class="eh-v2-check-icon">${c.ok ? '✓' : '✗'}</span>
+      <span class="eh-v2-check-name">${esc(c.name)}</span>
+      <span class="eh-v2-check-status">${esc(c.status.toUpperCase())}</span>
+    </div>`;
+  }
+
+  return `<div class="eh-v2-score-card">
+    <div class="eh-v2-score-left">
+      <div class="eh-v2-score-ring">
+        <svg width="88" height="88" viewBox="0 0 88 88">
+          <circle cx="44" cy="44" r="36" fill="none" stroke="var(--border)" stroke-width="6"/>
+          <circle cx="44" cy="44" r="36" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${dashoffset}" transform="rotate(-90 44 44)"/>
+        </svg>
+        <div class="eh-v2-score-value" style="color:${color}">${score}</div>
+      </div>
+      <div>
+        <div style="font-size:1.1rem;font-weight:800;color:${color}">${label}</div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${passed}/${checks.length} ${_t("kontrol geçti","checks passed")}</div>
+      </div>
+    </div>
+    <div class="eh-v2-checks-grid">${checksHtml}</div>
+  </div>`;
+}
+
+function renderSafetySummaryV2(data, level, score) {
+  const colors = { safe: "var(--green)", caution: "var(--yellow)", danger: "var(--red)" };
+  const bgs = { safe: "var(--green-bg)", caution: "var(--yellow-bg)", danger: "var(--red-bg)" };
+  const borderColors = { safe: "rgba(74,222,128,0.2)", caution: "rgba(251,191,36,0.2)", danger: "rgba(248,113,113,0.2)" };
+  const icons = { safe: "🛡️", caution: "⚠️", danger: "🚨" };
+  const titles = {
+    safe: _t("Bu email güvenilir görünüyor","This email appears safe"),
+    caution: _t("Bu email şüpheli — dikkatli olun","This email is suspicious — proceed with caution"),
+    danger: _t("Bu email tehlikeli olabilir — açmayın","This email may be dangerous — do not open")
+  };
+
+  const reasons = [];
+  const fromDomain = extractDomainFromEmail(data.meta?.from);
+  if (fromDomain) reasons.push(_t("Gönderen","From") + ": " + esc(fromDomain));
+
+  const hopCount = data.received?.length || 0;
+  const allTls = data.received?.every(h => h.tls) || false;
+  reasons.push(hopCount + " " + _t("hop","hops") + (allTls ? " · " + _t("Tüm TLS güvenli","All TLS secure") : " · ⚠ TLS eksik"));
+
+  const highAlerts = (data.alerts || []).filter(a => a.severity === "high");
+  if (highAlerts.length > 0) {
+    reasons.push(highAlerts.length + " " + _t("yüksek risk uyarısı","high risk alerts"));
+  }
+
+  return `<div class="eh-v2-safety-banner" style="background:${bgs[level]};border-color:${borderColors[level]}">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:1.3rem">${icons[level]}</span>
+      <span style="font-size:0.92rem;font-weight:700;color:${colors[level]}">${titles[level]}</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:3px;font-size:0.75rem;color:var(--text-secondary)">
+      ${reasons.map(r => `<div style="display:flex;align-items:center;gap:6px"><span style="color:${colors[level]}">·</span> ${r}</div>`).join("")}
+    </div>
+  </div>`;
+}
+
+function extractDomainFromEmail(email) {
+  if (!email) return null;
+  const m = email.match(/@([A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z]{2,})/);
+  return m ? m[1].toLowerCase() : email;
+}
+
+function renderAuthV2(auth) {
+  if (!auth) return "";
+  let html = "";
+
+  for (const method of ["spf", "dkim", "dmarc"]) {
+    const m = auth[method];
+    if (!m) continue;
+    const status = m.status || "none";
+    const isPass = status === "pass";
+    const isFail = status === "fail";
+    const color = isPass ? "var(--green)" : isFail ? "var(--red)" : "var(--text-muted)";
+    const bg = isPass ? "var(--green-bg)" : isFail ? "var(--red-bg)" : "rgba(148,163,184,0.08)";
+    const icon = isPass ? "✓" : isFail ? "✗" : "—";
+    const badgeClass = isPass ? "eh-badge-pass" : isFail ? "eh-badge-fail" : "eh-badge-none";
+
+    const descriptions = {
+      spf: _t("SPF, gönderen IP'nin domain tarafından yetkilendirilip yetkilendirilmediğini kontrol eder.","SPF checks if the sending IP is authorized by the domain."),
+      dkim: _t("DKIM, email'in şifreli imzasıyla bütünlüğünü doğrular.","DKIM verifies email integrity with a cryptographic signature."),
+      dmarc: _t("DMARC, SPF ve DKIM sonuçlarını birleştirip politika belirler.","DMARC combines SPF and DKIM results and sets a policy."),
+    };
+
+    let detailRows = "";
+    if (method === "spf" && m.record) detailRows += `<div class="eh-v2-detail-row"><span class="eh-v2-detail-label">DNS Record</span><span class="eh-v2-detail-value" style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;word-break:break-all">${esc(m.record)}</span></div>`;
+    if (method === "dkim" && m.selector) detailRows += `<div class="eh-v2-detail-row"><span class="eh-v2-detail-label">Selector</span><span class="eh-v2-detail-value" style="font-family:'JetBrains Mono',monospace">${esc(m.selector)}</span></div>`;
+    if (method === "dkim" && m.record) detailRows += `<div class="eh-v2-detail-row"><span class="eh-v2-detail-label">Public Key</span><span class="eh-v2-detail-value" style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;word-break:break-all">${esc(m.record.slice(0, 120))}${m.record.length > 120 ? '...' : ''}</span></div>`;
+    if (method === "dmarc" && m.record) detailRows += `<div class="eh-v2-detail-row"><span class="eh-v2-detail-label">Record</span><span class="eh-v2-detail-value" style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;word-break:break-all">${esc(m.record)}</span></div>`;
+    if (method === "dmarc" && m.policy) detailRows += `<div class="eh-v2-detail-row"><span class="eh-v2-detail-label">Policy</span><span class="eh-v2-detail-value"><span class="eh-badge ${m.policy === 'reject' ? 'eh-badge-pass' : m.policy === 'quarantine' ? 'eh-badge-none' : 'eh-badge-fail'}">${esc(m.policy.toUpperCase())}</span></span></div>`;
+
+    const aligned = m.aligned === true;
+    detailRows += `<div class="eh-v2-detail-row"><span class="eh-v2-detail-label">Alignment</span><span class="eh-v2-detail-value" style="color:${aligned ? 'var(--green)' : 'var(--red)'}">${aligned ? '✓ ' + _t("Eşleşiyor","Aligned") : '✗ ' + _t("Eşleşmiyor","Not aligned")}</span></div>`;
+
+    html += `<div class="eh-v2-auth-card" style="border-color:${isPass ? 'rgba(74,222,128,0.15)' : isFail ? 'rgba(248,113,113,0.15)' : 'var(--border)'}">
+      <div class="eh-v2-auth-header">
+        <div class="eh-v2-auth-icon" style="background:${bg};color:${color}">${icon}</div>
+        <div>
+          <div style="font-size:0.92rem;font-weight:700">${method.toUpperCase()}</div>
+          <div style="font-size:0.68rem;color:var(--text-muted)">${descriptions[method]}</div>
+        </div>
+        <span class="eh-badge ${badgeClass}" style="margin-left:auto;font-size:0.7rem;padding:3px 12px">${isPass ? '✓ PASS' : isFail ? '✗ FAIL' : status.toUpperCase()}</span>
+      </div>
+      <div class="eh-v2-auth-details">${detailRows}</div>
+    </div>`;
+  }
+
+  return html;
+}
+
+function renderAlertsV2(alerts) {
+  if (!alerts?.length) return "";
+  const sevColors = { high: "var(--red)", medium: "var(--yellow)", low: "var(--green)" };
+  const sevBgs = { high: "var(--red-bg)", medium: "var(--yellow-bg)", low: "var(--green-bg)" };
+  const sevIcons = { high: "🔴", medium: "🟡", low: "🟢" };
+
+  let html = `<div class="eh-v2-alerts-section">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      ${_t("Güvenlik Uyarıları","Security Alerts")} (${alerts.length})
+    </div>`;
+
+  for (const a of alerts) {
+    html += `<div class="eh-v2-alert" style="background:${sevBgs[a.severity]};border-left-color:${sevColors[a.severity]}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+        <span>${sevIcons[a.severity] || "•"}</span>
+        <strong style="font-size:0.8rem;color:${sevColors[a.severity]}">${esc(a.message)}</strong>
+      </div>
+      ${a.detail ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-left:26px">${esc(a.detail)}</div>` : ""}
+    </div>`;
+  }
+
+  html += "</div>";
+  return html;
+}
+
+function renderTimelineV2(received, ipInfo, ipReputation) {
+  if (!received?.length) return "";
+  const hops = received.slice().reverse();
+
+  // Calculate summary stats
+  const totalHops = hops.length;
+  const timestamps = hops.filter(h => h.ts).map(h => h.ts);
+  const totalDuration = timestamps.length >= 2 ? Math.max(...timestamps) - Math.min(...timestamps) : 0;
+  const maxDelay = Math.max(...hops.map(h => h.delay || 0), 0);
+  const tlsCount = hops.filter(h => h.tls && !/^1\.[01]$/.test(h.tls)).length;
+  const encryptedHops = hops.filter(h => h.tls).length;
+
+  let html = `<div class="eh-v2-timeline-section">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:6px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      ${_t("Email Yolculuğu","Email Journey")}
+    </div>`;
+
+  // Journey Summary Bar
+  const totalDurationStr = totalDuration > 0 ? formatDelayV2(totalDuration) : "0s";
+  const maxDelayStr = maxDelay > 0 ? formatDelayV2(maxDelay) : "0s";
+  const maxDelayColor = maxDelay > 5000 ? "danger" : maxDelay > 1000 ? "warning" : "";
+  const tlsColor = encryptedHops === totalHops ? "success" : encryptedHops > totalHops / 2 ? "warning" : "danger";
+  
+  html += `<div class="eh-v2-journey-summary">
+    <div class="eh-v2-journey-stat">
+      <div class="eh-v2-journey-stat-value">${totalHops}</div>
+      <div class="eh-v2-journey-stat-label">${_t("Toplam Hop","Total Hops")}</div>
+    </div>
+    <div class="eh-v2-journey-stat">
+      <div class="eh-v2-journey-stat-value">${totalDurationStr}</div>
+      <div class="eh-v2-journey-stat-label">${_t("Toplam Süre","Total Time")}</div>
+    </div>
+    <div class="eh-v2-journey-stat">
+      <div class="eh-v2-journey-stat-value ${maxDelayColor}">${maxDelayStr}</div>
+      <div class="eh-v2-journey-stat-label">${_t("En Yavaş Hop","Slowest Hop")}</div>
+    </div>
+    <div class="eh-v2-journey-stat">
+      <div class="eh-v2-journey-stat-value ${tlsColor}">${encryptedHops}/${totalHops}</div>
+      <div class="eh-v2-journey-stat-label">${_t("TLS Şifreli","TLS Encrypted")}</div>
+    </div>
+  </div>`;
+
+  html += `<ol class="eh-v2-journey">`;
+
+  // Gönderen
+  const sender = getEmailSender(hops);
+  if (sender) {
+    html += `<li class="eh-v2-endpoint eh-v2-endpoint-sender" style="animation: eh-v2-hop-fade-in 0.2s ease both">
+      <div class="eh-v2-endpoint-marker" aria-hidden="true"><span>✉️</span></div>
+      <div class="eh-v2-endpoint-content">
+        <div class="eh-v2-endpoint-text">
+          <div class="eh-v2-endpoint-label">${_t("GÖNDEREN","SENDER")}</div>
+          <div class="eh-v2-endpoint-addr">${esc(sender)}</div>
+        </div>
+      </div>
+    </li>`;
+  }
+
+  // Hop'lar
+  for (let i = 0; i < hops.length; i++) {
+    const h = hops[i];
+    const isLast = i === hops.length - 1;
+    const hopNumber = i + 1;
+    const nextHop = hops[i + 1];
+
+    const tlsColor = !h.tls ? "var(--red)" : /^1\.[01]$/.test(h.tls) ? "var(--yellow)" : "var(--green)";
+    const tlsLabel = h.tls ? `TLS ${h.tls}` : _t("Şifresiz","Plain");
+    const tlsIcon = !h.tls ? "✗" : /^1\.[01]$/.test(h.tls) ? "⚠" : "✓";
+    const cipherShort = h.cipher ? h.cipher.replace(/TLS_/g, "").replace(/_/g, " ") : "";
+
+    const ipData = ipInfo?.find(ip => ip.ip === h.ip);
+    const asn = ipData?.asn ? `AS${ipData.asn}` : "";
+    const org = ipData?.org || "";
+    const country = ipData?.country || "";
+
+    const delayStr = h.delay != null ? formatDelayV2(h.delay) : "";
+    const delayColor = !h.delay ? "var(--text-muted)" : h.delay > 5000 ? "var(--red)" : h.delay > 1000 ? "var(--yellow)" : "var(--green)";
+
+    const repData = ipReputation?.find(r => r.ip === h.ip);
+    const anomaly = detectTimeAnomaly(h, hops[i - 1]);
+    
+    const utcTime = h.ts ? new Date(h.ts).toISOString().replace("T", " ").replace(".000Z", " UTC") : "";
+
+    // Classify hop as internal or external
+    const hopType = classifyHop(h, hops, i);
+    const hopTypeLabel = hopType === "internal" ? _t("Dahili","Internal") : _t("Harici","External");
+    const hopTypeClass = hopType === "internal" ? "internal" : "external";
+
+    // Country flag emoji
+    const flagEmoji = countryToFlag(country);
+
+    html += `<li class="eh-v2-hop-card" style="animation: eh-v2-hop-fade-in 0.2s ease ${i * 0.03}s both">
+      <div class="eh-v2-hop-card-left">
+        <div class="eh-v2-hop-card-num eh-v2-hop-num-${hopTypeClass}" style="border-color:${tlsColor};color:${tlsColor}">${hopNumber}</div>
+      </div>
+      <div class="eh-v2-hop-card-body">
+        <div class="eh-v2-hop-card-header">
+          <span class="eh-v2-hop-card-name">${esc(h.from || "?")}</span>
+          <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round"><path d="M1 4h10M8 1l3 3-3 3"/></svg>
+          <span class="eh-v2-hop-card-name">${esc(h.by || "?")}</span>
+          <span class="eh-v2-hop-type-badge eh-v2-hop-type-badge-${hopTypeClass}">${hopTypeLabel}</span>
+        </div>
+        <div class="eh-v2-hop-card-badges">
+          <span class="eh-v2-hop-chip" style="color:${tlsColor}">${tlsIcon} ${tlsLabel}</span>
+          ${cipherShort ? `<span class="eh-v2-hop-chip eh-v2-hop-chip-cipher">${esc(cipherShort)}</span>` : ""}
+          ${delayStr ? `<span class="eh-v2-hop-chip eh-v2-hop-chip-delay" style="color:${delayColor}">⏱ ${delayStr}</span>` : ""}
+          ${flagEmoji ? `<span class="eh-v2-hop-chip eh-v2-hop-chip-geo">${flagEmoji} ${esc(country)}</span>` : ""}
+          ${asn ? `<span class="eh-v2-hop-chip eh-v2-hop-chip-asn">${esc(asn)}</span>` : ""}
+          ${repData && !repData.error ? `<span class="eh-v2-hop-chip" style="color:${repData.clean ? 'var(--green)' : 'var(--red)'}">${repData.clean ? '✓' : '⚠'} IP ${repData.clean ? _t("Temiz","Clean") : repData.listedCount + "/" + repData.totalLists}</span>` : ""}
+        </div>
+        <div class="eh-v2-hop-card-meta">
+          ${utcTime ? `<span>🕐 ${utcTime}</span>` : ""}
+          ${org ? `<span>${esc(org)}</span>` : ""}
+        </div>
+        ${anomaly ? `<div class="eh-v2-hop-card-warn">⚠ ${anomaly}</div>` : ""}
+      </div>
+    </li>`;
+
+    // Hop'lar arası ok + gecikme
+    if (!isLast && h.delay != null) {
+      const nd = h.delay;
+      const ndColor = nd > 5000 ? "var(--red)" : nd > 1000 ? "var(--yellow)" : "var(--green)";
+      const ndStr = formatDelayV2(nd);
+      html += `<li class="eh-v2-hop-arrow" style="animation: eh-v2-hop-fade-in 0.2s ease ${(i + 0.5) * 0.03}s both">
+        <div class="eh-v2-hop-arrow-spacer" aria-hidden="true"></div>
+        <div class="eh-v2-hop-arrow-content">
+          <svg width="14" height="20" viewBox="0 0 14 20"><line x1="7" y1="0" x2="7" y2="12" stroke="var(--border)" stroke-width="2"/><polyline points="3 8 7 12 11 8" fill="none" stroke="var(--border)" stroke-width="2" stroke-linecap="round"/></svg>
+          <span class="eh-v2-hop-arrow-label" style="color:${ndColor}">${ndStr}</span>
+        </div>
+      </li>`;
+    }
+  }
+
+  // Alıcı
+  const receiver = getEmailReceiver(hops);
+  if (receiver) {
+    html += `<li class="eh-v2-endpoint eh-v2-endpoint-receiver" style="animation: eh-v2-hop-fade-in 0.2s ease both">
+      <div class="eh-v2-endpoint-marker" aria-hidden="true"><span>📥</span></div>
+      <div class="eh-v2-endpoint-content">
+        <div class="eh-v2-endpoint-text">
+          <div class="eh-v2-endpoint-label">${_t("ALICI","RECEIVER")}</div>
+          <div class="eh-v2-endpoint-addr">${esc(receiver)}</div>
+        </div>
+      </div>
+    </li>`;
+  }
+
+  html += "</ol></div>";
+  return html;
+}
+
+function getEmailSender(hops) {
+  if (!hops || hops.length === 0) return null;
+  const first = hops[0];
+  const byHost = first.by || "";
+  if (byHost && byHost.includes(".")) return byHost;
+  return first.from || null;
+}
+function getEmailReceiver(hops) {
+  if (!hops || hops.length === 0) return null;
+  const last = hops[hops.length - 1];
+  return last.by || last.from || null;
+}
+
+function detectTimeAnomaly(currentHop, prevHop) {
+  if (!currentHop?.delay || !prevHop) return null;
+  if (currentHop.delay < 0) {
+    return _t("Zaman paradoksu: Önceki hop'tan önce geldi","Time paradox: Arrived before previous hop");
+  }
+  if (currentHop.delay > 3600000) {
+    const hours = Math.floor(currentHop.delay / 3600000);
+    return _t("Çok uzun gecikme","Very long delay") + ` (${hours}+ ${_t("saat","hours")})`;
+  }
+  return null;
+}
+
+function formatDelayV2(ms) {
+  if (ms < 0) return "";
+  if (ms < 1000) return `+${Math.round(ms)}ms`;
+  if (ms < 60000) return `+${(ms / 1000).toFixed(1)}s`;
+  const m = Math.floor(ms / 60000);
+  const s = Math.round((ms % 60000) / 1000);
+  return `+${m}m${s}s`;
+}
+
+function renderMetaCardV2(meta, emailClient, priority, importance) {
+  if (!meta || !Object.values(meta).some(v => v)) return "";
+  const labels = { from: _t("Gönderen","From"), to: _t("Alıcı","To"), subject: _t("Konu","Subject"), date: _t("Tarih","Date"), messageId: "Message-ID", returnPath: "Return-Path", replyTo: "Reply-To" };
+  const icons = { from: "✉️", to: "📥", subject: "🏷️", date: "📅", messageId: "🆔", returnPath: "🔄", replyTo: "↩️" };
+  let rows = "";
+  for (const [k, v] of Object.entries(meta)) {
+    if (v) rows += `<div class="eh-meta-row"><span class="eh-meta-icon">${icons[k] || "•"}</span><span class="eh-meta-label">${labels[k] || k}</span><span class="eh-meta-value">${esc(v)}</span></div>`;
+  }
+
+  // Email client bilgisi
+  if (emailClient) {
+    const clientInfo = detectEmailClient(emailClient);
+    rows += `<div class="eh-meta-row"><span class="eh-meta-icon">💻</span><span class="eh-meta-label">${_t("Email İstemcisi","Email Client")}</span><span class="eh-meta-value">${clientInfo.icon} ${esc(clientInfo.name)}</span></div>`;
+  }
+
+  // Priority/Importance
+  if (priority || importance) {
+    const isUrgent = priority?.includes("1") || priority?.toLowerCase().includes("high") || importance?.toLowerCase() === "high";
+    const urgentIcon = isUrgent ? "🚨" : "📌";
+    const urgentColor = isUrgent ? "var(--red)" : "var(--yellow)";
+    rows += `<div class="eh-meta-row"><span class="eh-meta-icon">${urgentIcon}</span><span class="eh-meta-label">${_t("Öncelik","Priority")}</span><span class="eh-meta-value" style="color:${urgentColor};font-weight:600">${esc(priority || importance)}</span></div>`;
+  }
+
+  return `<div class="eh-card"><h4 class="eh-card-title"><svg width="16"height="16"viewBox="0 0 24 24"fill="none"stroke="currentColor"stroke-width="2"stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> ${_t("Temel Bilgiler","Basic Info")}</h4><div class="eh-meta-grid">${rows}</div></div>`;
+}
+
+function detectEmailClient(client) {
+  const c = client.toLowerCase();
+  if (c.includes("outlook")) return { name: "Microsoft Outlook", icon: "📧" };
+  if (c.includes("thunderbird")) return { name: "Mozilla Thunderbird", icon: "🐦" };
+  if (c.includes("apple mail") || c.includes("mac os x")) return { name: "Apple Mail", icon: "🍎" };
+  if (c.includes("gmail") || c.includes("google")) return { name: "Gmail", icon: "📮" };
+  if (c.includes("yahoo")) return { name: "Yahoo Mail", icon: "📬" };
+  if (c.includes("protonmail")) return { name: "ProtonMail", icon: "🔒" };
+  if (c.includes("lotus")) return { name: "IBM Lotus Notes", icon: "📋" };
+  if (c.includes("postfix") || c.includes("sendmail")) return { name: "MTA Server", icon: "🖥️" };
+  if (c.includes("php")) return { name: "PHP Mail", icon: "🐘" };
+  return { name: client.substring(0, 40), icon: "💻" };
+}
+
+function renderIPCardV2(ipInfo) {
+  if (!ipInfo?.length) return "";
+  let html = `<div class="eh-card"><h4 class="eh-card-title"><svg width="16"height="16"viewBox="0 0 24 24"fill="none"stroke="currentColor"stroke-width="2"stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><circle cx="12" cy="12" r="3"/></svg> ${_t("IP Bilgileri","IP Information")}</h4><div class="eh-v2-ip-grid">`;
+  for (const info of ipInfo) {
+    const ptrs = info.ptr?.length > 0 ? esc(info.ptr.join(", ")) : '<span style="color:var(--text-muted)">' + _t("PTR yok","No PTR") + '</span>';
+    const asn = info.asn ? `<span class="eh-v2-badge" style="color:var(--accent);background:rgba(56,189,248,0.08);border-color:rgba(56,189,248,0.15)">AS${info.asn}</span>` : "";
+    const country = info.country ? `<span class="eh-v2-badge" style="color:var(--text-secondary);background:var(--bg-elevated);border-color:var(--border)">${esc(info.country)}</span>` : "";
+    const org = info.org || "";
+
+    html += `<div class="eh-v2-ip-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:0.85rem">${esc(info.ip)}</span>
+        ${asn}${country}
+      </div>
+      ${org ? `<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:4px">${esc(org)}</div>` : ""}
+      <div style="font-size:0.68rem;color:var(--text-muted)">PTR: ${ptrs}</div>
+    </div>`;
+  }
+  html += "</div></div>";
+  return html;
+}
+
+function renderAttachmentsV2(attachments, contentType) {
+  if (!attachments || attachments.length === 0) {
+    if (contentType && contentType.includes("multipart")) {
+      return `<div class="eh-v2-attachment-card eh-v2-attachment-none">
+        <span style="font-size:1.2rem">📎</span>
+        <div style="font-size:0.78rem;color:var(--text-secondary)">${_t("Multipart email — ek dosya bilgisi header'da görünmüyor","Multipart email — attachment details not visible in headers")}</div>
+      </div>`;
+    }
+    return "";
+  }
+
+  let html = `<div class="eh-v2-attachment-section">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+      <span>📎</span> ${_t("Ek Dosyalar","Attachments")} (${attachments.length})
+    </div>
+    <div class="eh-v2-attachment-grid">`;
+
+  for (const att of attachments) {
+    const ext = att.filename.split('.').pop().toLowerCase();
+    const suspicious = ['exe', 'scr', 'bat', 'cmd', 'pif', 'vbs', 'js', 'wsf', 'msi', 'dll', 'com', 'hta', 'cpl'].includes(ext);
+    const icon = getFileIcon(ext);
+
+    html += `<div class="eh-v2-attachment-item ${suspicious ? 'eh-v2-attachment-danger' : ''}">
+      <span class="eh-v2-attachment-icon">${icon}</span>
+      <div class="eh-v2-attachment-info">
+        <div class="eh-v2-attachment-name">${esc(att.filename)}</div>
+        <div class="eh-v2-attachment-meta">${esc(ext.toUpperCase())}</div>
+      </div>
+      ${suspicious ? '<span class="eh-v2-attachment-warning">⚠️ ' + _t("Şüpheli","Suspicious") + '</span>' : ''}
+    </div>`;
+  }
+
+  html += "</div></div>";
+  return html;
+}
+
+function getFileIcon(ext) {
+  const icons = {
+    pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊',
+    ppt: '📽️', pptx: '📽️', zip: '🗜️', rar: '🗜️', '7z': '🗜️',
+    jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', svg: '🖼️', bmp: '🖼️',
+    mp3: '🎵', wav: '🎵', flac: '🎵', mp4: '🎬', avi: '🎬', mov: '🎬', mkv: '🎬',
+    txt: '📃', csv: '📃', rtf: '📃',
+    html: '🌐', htm: '🌐', xml: '🌐', json: '🌐',
+    exe: '⚙️', msi: '⚙️', dmg: '⚙️',
+    iso: '💿', img: '💿',
+  };
+  return icons[ext] || '📎';
+}
+
+function renderSpamScoreV2(spamScore, spamStatus) {
+  if (spamScore === null && !spamStatus) return "";
+
+  const score = spamScore ?? 0;
+  const maxScore = 10;
+  const pct = Math.min(100, Math.max(0, (score / maxScore) * 100));
+
+  let color, bg, label;
+  if (score < 2) {
+    color = "var(--green)"; bg = "var(--green-bg)"; label = _t("Düşük Spam Riski","Low Spam Risk");
+  } else if (score < 5) {
+    color = "var(--yellow)"; bg = "var(--yellow-bg)"; label = _t("Orta Spam Riski","Medium Spam Risk");
+  } else {
+    color = "var(--red)"; bg = "var(--red-bg)"; label = _t("Yüksek Spam Riski","High Spam Risk");
+  }
+
+  return `<div class="eh-v2-spam-card" style="background:${bg};border-color:${color}30">
+    <div class="eh-v2-spam-header">
+      <span style="font-size:1.2rem">🛡️</span>
+      <span style="font-size:0.85rem;font-weight:700;color:${color}">${label}</span>
+    </div>
+    <div class="eh-v2-spam-bar">
+      <div class="eh-v2-spam-fill" style="width:${pct}%;background:${color}"></div>
+    </div>
+    <div class="eh-v2-spam-details">
+      <span>${_t("Spam Skoru","Spam Score")}: <strong style="color:${color}">${score.toFixed(1)}</strong> / ${maxScore}</span>
+      ${spamStatus ? `<span style="margin-left:auto;font-size:0.7rem;color:var(--text-muted);max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(spamStatus)}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderCalendarBadgeV2(method) {
+  const methodLabels = {
+    "REQUEST": _t("Toplantı Daveti","Meeting Invite"),
+    "REPLY": _t("Toplantı Yanıtı","Meeting Reply"),
+    "CANCEL": _t("Toplantı İptali","Meeting Cancel"),
+    "ADD": _t("Toplantı Güncellemesi","Meeting Update"),
+  };
+  const label = methodLabels[method] || _t("Takvim Daveti","Calendar Invite");
+
+  return `<div class="eh-v2-calendar-badge">
+    <span>📅</span>
+    <span>${label}</span>
+    ${method ? `<span style="margin-left:auto;font-size:0.65rem;color:var(--text-muted)">${esc(method)}</span>` : ''}
+  </div>`;
+}
+
+function renderNewsletterBadgeV2() {
+  return `<div class="eh-v2-newsletter-badge">
+    <span>📧</span>
+    <span>${_t("Newsletter / Marketing Email","Newsletter / Marketing Email")}</span>
+    <span style="margin-left:auto;font-size:0.65rem;color:var(--text-muted)">List-Unsubscribe ${_t("mevcut","present")}</span>
+  </div>`;
+}
+
+function countryToFlag(iso) {
+  if (!iso || iso.length !== 2) return "";
+  return iso.toUpperCase().replace(/./g, c => String.fromCodePoint(0x1F1A5 + c.charCodeAt(0)));
+}
+
+function classifyHop(hop, hops, index) {
+  const ip = hop.ip || "";
+  const from = (hop.from || "").toLowerCase();
+  const by = (hop.by || "").toLowerCase();
+  
+  // Check if IP is private/internal
+  const isPrivate = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|169\.254\.)/.test(ip) || 
+                    /^fe80:/i.test(ip) || /^::1$/.test(ip) ||
+                    /local|internal|corp|intranet|private/i.test(from) ||
+                    /local|internal|corp|intranet|private/i.test(by);
+  
+  if (isPrivate) return "internal";
+  
+  // Check if from and by domains are the same (internal relay)
+  if (from && by) {
+    const fromDomain = extractDomain(from);
+    const byDomain = extractDomain(by);
+    if (fromDomain && byDomain && fromDomain === byDomain) return "internal";
+  }
+  
+  return "external";
+}
+
+function extractDomain(email) {
+  if (!email) return null;
+  const match = email.match(/@([a-z0-9.-]+\.[a-z]{2,})$/i);
+  return match ? match[1].toLowerCase() : null;
+}
