@@ -1,30 +1,35 @@
-# dnsfyi Frontend v1.4.0
+# 🔭 dnsfyi Frontend v1.4.0
 
-> DNS diagnostic tool — DNS lookup, WHOIS, SSL, email security, port scanner, blacklist, typosquatting detection, email header analyzer. 20+ tools, no sign-up.
+> 🚀 **Live at [www.dnsfyi.com](https://www.dnsfyi.com)** — 20+ DNS & domain analysis tools, free, no sign-up.
 
 **This is the frontend only.** The backend API is private.
 
+![badge](https://img.shields.io/badge/version-1.4.0-blue?style=flat)
+![badge](https://img.shields.io/badge/license-MIT-green?style=flat)
+
 ---
 
-## Features
+## ✨ Features
 
 | Category | Tools |
 |----------|-------|
-| **DNS** | A, AAAA, MX, NS, TXT, SOA, CNAME, CAA, SRV, DNSSEC, DNS propagation (25 resolvers), latency |
-| **Email Security** | SPF, DKIM (25+ selectors), DMARC, BIMI, MTA-STS, TLS-RPT |
-| **Email Header Analyzer** | RFC 5322 parser, hop timeline with TLS/cipher, geo/ASN inline, ARC chain, phishing detection |
-| **SSL/TLS** | Protocol, cipher, cert chain, expiry, OCSP, fingerprint |
-| **Blacklist** | 28 DNSBL checks (Spamhaus, SpamCop, Barracuda, SORBS, etc.) |
-| **Port Scanner** | 21 common ports + custom port |
-| **WHOIS** | IANA referral chain, full parsed output |
-| **Subdomain Discovery** | 87-word brute-force |
-| **Typosquatting** | Homoglyph, hyphenation, insertion, omission, transposition, TLD-swap |
-| **ASN / IP Info** | AS number, prefix, ISP, country |
-| **Reverse DNS** | PTR + reverse IP lookup |
-| **Tech Stack** | Hosting/CDN/email provider fingerprint |
-| **Security Headers** | HSTS, CSP, XFO, etc. + scoring |
+| 🔍 **DNS** | A, AAAA, MX, NS, TXT, SOA, CNAME, CAA, SRV, DNSSEC, DNS propagation (25 global resolvers), latency benchmarking |
+| 📧 **Email Security** | SPF, DKIM (25+ selectors), DMARC, BIMI, MTA-STS, TLS-RPT, MX TTL consistency |
+| ✉️ **Email Header Analyzer** | RFC 5322 parser, hop timeline with TLS/cipher, geo/ASN inline, ARC chain, phishing detection |
+| 🔒 **SSL/TLS** | Protocol version, cipher strength, certificate chain, expiry, OCSP, TLS fingerprint |
+| ⚠️ **Blacklist** | 28 DNSBL checks (Spamhaus, SpamCop, Barracuda, SORBS, etc.) |
+| 🔌 **Port Scanner** | 21 common ports + custom port |
+| 📄 **WHOIS** | IANA referral chain, full parsed output |
+| 🌐 **Subdomain Discovery** | 87-word brute-force (50 concurrent, 3s timeout) |
+| 🕵️ **Typosquatting** | Homoglyph, hyphenation, insertion, omission, transposition, TLD-swap |
+| 📡 **ASN / IP Info** | AS number, prefix, ISP, country, allocation date |
+| 🔄 **Reverse DNS** | PTR lookup + reverse IP (domains on same IP) |
+| 🏢 **Tech Stack** | Hosting/CDN/email provider fingerprint (40+ providers) |
+| 🛡️ **Security Headers** | HSTS, CSP, XFO, etc. + scoring |
+| 📊 **Health Score** | 0-100 scoring for DNS, email, SSL, ports |
+| 🌙 **Dark Mode** | Light/dark theme with system preference detection |
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 npx serve .
@@ -32,7 +37,7 @@ npx serve .
 
 Open `http://localhost:8080` — API calls will fail without the backend.
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 ├── index.html           # Turkish UI (served at /tr/)
@@ -44,13 +49,16 @@ Open `http://localhost:8080` — API calls will fail without the backend.
     └── jspdf.umd.min.js
 ```
 
-## Tech Stack
+## 🧰 Tech Stack
 
-- **Vanilla JS** — No framework, no build step
-- **CSS Grid / Flexbox** — Responsive layout
-- **html2canvas + jsPDF** — PDF export
-- **i18n** — Turkish + English (cookie + Accept-Language detection)
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Vanilla JS (no framework) |
+| **Layout** | CSS Grid / Flexbox |
+| **PDF Export** | html2canvas + jsPDF |
+| **i18n** | Turkish + English (cookie + Accept-Language) |
+| **Theme** | CSS custom properties, system preference |
 
-## License
+## 📄 License
 
 MIT
